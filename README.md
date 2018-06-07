@@ -6,6 +6,8 @@ Using a Lagrangian particle tracking model, based off of the [SCCOOS Tijuana Riv
 
 ![alt latest river tijuana plume tracker](http://neocoweb.ucsd.edu/data/tracking/IB/tjrpts_ani_latest.gif)
 
+Latest iteration of the Tijuana River Plume tracker from SCCOOS.
+
 ### The Model ###
 
 High Frequency Radar is capable of measuring surface currents in near-realtime (~ hour delayed), because of its proximity to the coast line and its high resolution (500m, 2km, or 6km) it is a suitable tool for modeling how surface water masses advect around.
