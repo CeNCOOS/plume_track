@@ -8,12 +8,12 @@ import scipy.io
 import pdb
 from datetime import date
 import matplotlib.pyplot as plt
-from shapely.geometry import Polygon,Point
+from shapely.geometry import Polygon,Point,LineString
 import scipy.interpolate
 from mpl_toolkits.basemap import Basemap
 import pyproj
 import math
-from lonlat2km import lonlat2km
+from lonlat2km import lonlat2km,km2lonlat
 
 
 #res=input('Enter the resolution (2 or 6 km): ')
@@ -191,17 +191,23 @@ npts=50
 nlife=24*3
 xc=-122.5726
 yc=37.7836
+uerr=2
 #
 #
 lts=len(time)
 indx=indx.astype(int)
 indy=indy.astype(int)
+gxx=x
+gyy=y
+x_=[]
+y_=[]
+xb=xb[0:-4]
+yb=yb[0:-4]
 for k in range(lts):
     tmpu=np.squeeze(newu[k,indx,indy])
     tmpv=np.squeeze(newv[k,indx,indy])
     # need to shrink tmpu and tmpv to just the boundary points?
-    # this needs to be added below
-    
+    # this needs to be added below    
     mg=np.abs(tmpu+tmpv*z)*dcf
     ph=np.arctan2(tmpv,tmpu)
     phb=thb[blist]
@@ -209,30 +215,97 @@ for k in range(lts):
     mgb=mg*np.cos(ph-phb)
     ub=mgb*np.cos(phb)
     vb=mgb*np.sin(phb)
-    
+    emg=np.interp(baxis,baxis[blist],mgb)
+    eub=emg*np.cos(thb)
+    evb=emg*np.sin(thb)
+    u_=np.squeeze(newu[k,:,:])
+    v_=np.squeeze(newv[k,:,:])
+    #
+    ival=np.isnan(u_)==0
+    jval=np.isnan(eub)==0
+    #
+    # do we only do this for k==1?
+    # reseeds for each time step otherwise?
+    if k==0:
+        x_=np.append(x_,xc*np.ones((npts,1)))
+        y_=np.append(y_,yc*np.ones((npts,1)))
+    #
+    # remove particles beyond lifetime of particle
+    #
+    if k > nlife:
+        x_=np.delete(x_,range(1,npts+1))
+        y_=np.delete(y_,range(1,npts+1))
+    #
+    gtmpx=gxx[ival]
+    gtmpy=gyy[ival]
+    utmp=u_[ival]
+    vtmp=v_[ival]
+    testx=np.append(gtmpx, xb[jval])
+    testy=np.append(gtmpy, yb[jval])
+    testu=np.append(utmp, eub[jval])
+    testv=np.append(vtmp, evb[jval])
+    u_=scipy.interpolate.griddata((testx,testy),testu,(x_,y_))
+    v_=scipy.interpolate.griddata((testx,testy),testv,(x_,y_))
+    ntotalpt=len(x_)
+    # gerate random directions
+    th=2*np.pi*np.random.sample((ntotalpt,))
+    # add random error to u and v uerr=2
+    un_=u_+uerr*np.cos(th)
+    vn_=v_+uerr*np.sin(th)
+    mgn=np.abs(un_+z*vn_)
+    phn=np.arctan2(vn_,un_)
+    # cv is some time-step function?
+    dx=un_*cv
+    dy=vn_*cv
+    xn_,yn_=km2lonlat(x_,y_,dx,dy)
+    jj=1
+    for j in range(ntotalpt):
+        # create shapely object of boundary points as a line
+        a1=LineString(zip(xb,yb))
+        xx=[x_[j],xn_[j]]
+        yy=[y_[j],yn_[j]]
+        # create shapely object of 2 velocity starting points
+        a2=LineString(zip(xx,yy))
+        # find out if they intersect?
+        cc=a2.intersection(a1)
+        try:
+            cx=cc[0]
+            cy=cc[1]
+            a,b=lonlat2km(cx,cy,xb,yb)
+            c=np.abs(a+z*b)
+            #pdb.set_trace()
+            ii=[i for i,e in enumerate(c) if e==np.min(c)]              
+            #ii=c==np.min(c)
+            ii=ii[0]
+            dx=eub[ii]*cv
+            dy=evb[ii]*cv
+            xn_[j],yn_[j]=km2lonlat(x_[j],y_[j],dx,dy)
+        except:
+            continue
+    if k==0:
+        xf=np.vstack(xn_)
+        yf=np.vstack(yn_)
+    else:
+        xtest=np.expand_dims(xn_,axis=1)
+        ytest=np.expand_dims(yn_,axis=1)
+        xf=np.hstack((xf,xtest))
+        yf=np.hstack((yf,ytest))
+    x_=xn_
+    y_=yn_
     
 #
 # compute boundary around a set of points....
 #
-#from scipy.spactial import ConvexHull
-#allPoints=np.colum_stack((lats,longs))
-#hullPoints=ConvexHull(allPoints)
-pdb.set_trace()
-#    fu=scipy.interpolate.interp2d(tmpx,tmpy,tmpu)
-#    fv=scipy.interpolate.interp2d(tmpx,tmpy,tmpv)
-#    unew=fu(longitude,latitude)
-#    vnew=fv(longitude,latitude)
-    
-# These remove SF bay and tomales bay
-#xr=np.arange(263,309)
-#xr=np.append(xr,np.arange(411,676))
-#xb=np.delete(xb,xr)
-#yb=np.delete(yb,xr)
-#
-#indy=[i for i,e in enumerate(yb) if e > 40]
-#xb=np.delete(xb,indy)
-#yb=np.delete(yb,indy)
-#indx=[i for i,e in enumerate(xb) if e > -122]
-#xb=np.delete(xb,indx)
-#yb=np.delete(yb,indx)
+myc=plt.cm.rainbow(np.linspace(0,1,72))
+mp=Basemap(llcrnrlon=360-123.5,llcrnrlat=37,urcrnrlon=360-122,urcrnrlat=38.5,resolution='f',projection='cyl')
+mp.fillcontinents()
+mp.drawcoastlines()
+mp.quiver(360+testx,testy,testu,testv)
+for i in range(72):
+    plt.plot(xf[:,i]+360,yf[:,i],'.',color=myc[i])
+llon=np.arange(360-123.5,360-122,0.25)
+llat=np.arange(37,38.5,0.25)
+mp.drawmeridians(llon,labels=[1,0,0,1])
+mp.drawparallels(llat,labels=[1,0,0,1])
+plt.show()
 
