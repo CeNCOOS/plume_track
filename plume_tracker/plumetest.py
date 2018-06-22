@@ -5,45 +5,62 @@ import datetime, sys
 from pydap.client import open_url
 import scipy.io
 import pdb
+import cartopy.crs as ccrs
 from shapely.geometry import Polygon,Point
 import scipy.interpolate
 import xarray as xr
+import matplotlib.pyplot as plt
 # from mpl_toolkits.basemap import Basemap
 import pyproj
 from lonlat2km import lonlat2km
+import particle_advection as particle
 
 
-def set_model_parameters():
-
+def set_model_parameters(default=False):
+    ''' Hotwire the default parameters for developement '''
+    crs = ccrs.PlateCarree() # Make cartopy projection object
+    
     resolution_km = 2
     days_to_capture=3
 
-    try:
-        year,month,day,hour,minu,secs=input("Enter the start date [yr mn dy hr mn sc] ").split()
-    except ValueError:
-        print('Defaulting to 2017-05-27T05:00:00')
-        year,month,day,hour,minu,secs = 2017,5,27,5,0,0
-        start_time = datetime.datetime(year,month,day,hour,minu,secs)
-    #[year,month,day,hour,minu,secs]=input('Enter the start date [yr,mn,dy,hr,mn,sc]): ')
-    #[2017,5,27,5,0,0]
     if int(resolution_km)==2:
         url='http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd'
     if int(resolution_km)==6:
         url='http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd'
-    try:
-        maxlat,minlat=input('Enter the north and south boundary []: ').split()
-    except ValueError:
+
+    if default:
+        year,month,day,hour,minu,secs = 2017,5,27,5,0,0
+        start_time = datetime.datetime(year,month,day,hour,minu,secs)
         maxlat, minlat = 38.5, 37
-    maxlat=float(maxlat)
-    minlat=float(minlat)
-    # [38.5,37]
-    try:
-        minlon, maxlon=input('Enter the west and east boundary []: ').split()
-    except ValueError:
+        maxlat=float(maxlat)
+        minlat=float(minlat)
         minlon, maxlon = -123.5, -122
-    minlon=float(minlon)
-    maxlon=float(maxlon)
-    # [-123.5, -122]
+        minlon=float(minlon)
+        maxlon=float(maxlon)
+
+    else:
+        try:
+            year,month,day,hour,minu,secs=input("Enter the start date [yr mn dy hr mn sc] ").split()
+        except ValueError:
+            print('Defaulting to 2017-05-27T05:00:00')
+            year,month,day,hour,minu,secs = 2017,5,27,5,0,0
+            start_time = datetime.datetime(year,month,day,hour,minu,secs)
+        #[year,month,day,hour,minu,secs]=input('Enter the start date [yr,mn,dy,hr,mn,sc]): ')
+        #[2017,5,27,5,0,0]
+        try:
+            maxlat,minlat=input('Enter the north and south boundary []: ').split()
+        except ValueError:
+            maxlat, minlat = 38.5, 37
+        maxlat=float(maxlat)
+        minlat=float(minlat)
+        # [38.5,37]
+        try:
+            minlon, maxlon=input('Enter the west and east boundary []: ').split()
+        except ValueError:
+            minlon, maxlon = -123.5, -122
+        minlon=float(minlon)
+        maxlon=float(maxlon)
+
     return minlon, maxlon, minlat, maxlat, resolution_km, url, days_to_capture, start_time
 
 def get_HFR_subset():
@@ -63,10 +80,19 @@ def get_HFR_subset():
         print(e)
         sys.exit()
 
-    event_ds = ds.sel(time = slice(start_time, start_time + datetime.timedelta(days=days_to_capture)))
+    event_ds = ds.sel(time = slice(start_time, start_time + datetime.timedelta(days=days_to_capture)),lat =  slice(minlat,maxlat), lon = slice(minlon,maxlon))
 
     return event_ds
 
+''' TODO: draw map functions '''
+
+def draw_map():
+    ''' Draw a map of the  '''
+    fig = plt.figure()
+    axes = plt.axes(transform=crs)
+    
+    
+    
 def run_old():
 
     # need to keep the track of the fractional part.
@@ -270,5 +296,5 @@ def run_old():
 
 
 if __name__ == "__main__":
-    minlon, maxlon, minlat, maxlat, resolution_km, url, days_to_capture, start_time = set_model_parameters()
-    print(get_HFR_subset(slice()))
+    minlon, maxlon, minlat, maxlat, resolution_km, url, days_to_capture, start_time = set_model_parameters(default=True)
+    print(get_HFR_subset())
