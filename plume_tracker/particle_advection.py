@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def bilinear_interpolation(X, Y, f, x, y):
+def bilinear_interpolation(model, particle, vector):
     """
     Interpolation methods for estimating surface current values in between grid points. Edge cases are outlined in the
     top of the function and may need to be refactored. NaNs is returned for cases where values can not be interpolated.
@@ -17,6 +17,13 @@ def bilinear_interpolation(X, Y, f, x, y):
     interp_value: interpolated value of f(y,x)
 
     """
+    X = model.x_grid
+    Y = model.y_grid
+    x, y = model.get_current_position()
+    if vector == 'u':
+        model.current_dataset['u'].isel(time=model.time_index)
+    if vector == 'v':
+        model.current_dataset['v'].isel(time=model.time_index)
     # Grid index shape
     M = np.shape(X[:, 0])[0]
     N = np.shape(X[0, :])[0]
@@ -68,7 +75,7 @@ def bilinear_interpolation(X, Y, f, x, y):
 
     return interp_value
 
-def rk4(X, Y, x, y, f, h, dim):
+def rk4(model, particle):
     """
     Solves for the next position of a particle in after time, h, in either the x
     or y using a runge-kutta 4th order scheme.
