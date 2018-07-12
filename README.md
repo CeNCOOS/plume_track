@@ -21,3 +21,7 @@ The time step can either be fixed or variable depending on the magnitude of the 
 The model is currently being ported into python, where it will continued to be developed, this code is found in the [python](./python/) directory.
 
 For reference, the original Matlab code can also be found in the [matlab](./matlab/) directory, although it may not be developed any further.
+
+### The Output ###
+
+![exampleImage](./2017527T050000_particle_trajectory.png)
