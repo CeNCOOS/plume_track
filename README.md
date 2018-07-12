@@ -2,7 +2,7 @@
 
 Fluvian discharge from rain events can cause plumes of freshwater to discharge from the San Francisco Bay, often transporting pollutants like fecal coliform to the nearby beaches.
 
-Using a Lagrangian particle tracking model, based off of the [SCCOOS Tijuana River Plume Tracker](http://neocoweb.ucsd.edu/data/tracking/IB/), plume trajectories can be modeled from High Frequency Radar (HFR) derived surface current measurements. This tool will allow users to access the impact on various beaches following a plume discharge event.
+Using a Lagrangian particle tracking model, based off of the [SCCOOS Tijuana River Plume Tracker](http://www.sccoos.org/data/tracking/IB/), plume trajectories can be modeled from High Frequency Radar (HFR) derived surface current measurements. This tool will allow users to access the impact on various beaches following a plume discharge event.
 
 ![alt latest river tijuana plume tracker](http://neocoweb.ucsd.edu/data/tracking/IB/tjrpts_ani_latest.gif)
 
