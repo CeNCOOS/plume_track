@@ -1,10 +1,8 @@
-# plume code
-#
 import numpy as np
 import datetime, sys
-from pydap.client import open_url
 import scipy.io
 import pdb
+import os
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from shapely.geometry import Polygon,Point
@@ -12,11 +10,13 @@ import scipy.interpolate
 import xarray as xr
 import matplotlib.pyplot as plt
 import hfr_util
-# from mpl_toolkits.basemap import Basemap
 import pyproj
+from matplotlib import animation, rc
+plt.rcParams['animation.html'] = 'jshtml'
+animation.rcParams['animation.embed_limit'] = 60
 #from lonlat2km import lonlat2km
 
-class TrackingModel():
+class TrackingModel(object):
 
     def __init__(self):
         self.minlon, self.maxlon, self.minlat, self.maxlat, self.resolution_km, self.url, self.days_to_capture, self.start_time = self.set_model_parameters(default=True)
@@ -123,17 +123,20 @@ class TrackingModel():
         p_coor = p_coor[:,:2]
         return p_coor
 
-    def draw_map(self, draw_bathy=True):
+    def draw_map(self, draw_bathy=True, whole_extent=False):
         ''' Draw a map of the domain '''
 
-        land_feature  = cfeature.NaturalEarthFeature('physical','land','50m')
+        land_feature  = cfeature.NaturalEarthFeature('physical','land','10m')
         self.fig = plt.figure()
 #        self.fig.set_size_inches(8,8)
         self.geo_axes = plt.axes(projection=ccrs.PlateCarree())
-        extent = [self.minlon, self.maxlon, self.minlat, self.maxlat]
+        if whole_extent:
+            extent = [self.minlon, self.maxlon, self.minlat, self.maxlat]
+        else:
+            extent = [-123, -122.3, 37.26, 38]
         self.geo_axes.set_extent(extent, crs=ccrs.PlateCarree())
         self.geo_axes.add_feature(land_feature, edgecolor='k', zorder=40)
-        self.geo_axes.gridlines(draw_labels=True, zorder= 20)
+#        self.geo_axes.gridlines(draw_labels=True, zorder= 20)
         if draw_bathy:
             self._draw_bathymetry_SFBAY()
 
@@ -155,13 +158,74 @@ class TrackingModel():
         cs = self.geo_axes.contour(blon, blat, elev, levels, linewidths=lws, linestyles='solid', colors=['black'], alpha=0.4)
         plt.clabel(cs, list(np.arange(-125,1,25)),fmt='%1d', inline=True, fontsize=15, colors='k',inline_spacing=10)
 
-    def plot_particles(self, last):
-        if last:
+
+    def plot_particles(self, plot_type='all', save_dir):
+        """ 
+        Make plots of the particle trajectories. Can make static plots, last locations, or animations
+        """
+        if plot_type == 'last':
             #Only if you want to plot the last position (debugging)
             for p in self.particles[:]:
-                pos = self.part_to_coor(p)
+                pos = self.part_to_coor(p, last=True)
                 self.geo_axes.scatter(pos[0,0],pos[0,1], zorder=50, marker='.', c='grey')
-        else:
+        
+        
+        elif plot_type == 'animation':
+            # make animation of all the particle trajectories
+            Q = self.geo_axes.quiver(self.lon_grid, self.lat_grid, model.current_dataset['u_clean'].isel(time=0), model.current_dataset['v_clean'].isel(time=0), color='b', units='inches')
+            p = self.particles[0]
+            px, py = p.coordinates[:,0]+self.origin[0], p.coordinates[:,1]+self.origin[1]
+            line, = self.geo_axes.plot(px[0],py[0],
+                                       color='.75',
+                                       transform=ccrs.UTM(zone=10))
+            front_marker = self.geo_axes.scatter(px[0],py[0],
+                                                 color='b',
+                                                 s=10,
+                                                 transform=ccrs.UTM(zone=10))
+            tail_marker = self.geo_axes.scatter(px[0],py[0],
+                                                marker='x',
+                                                color='b',
+                                                s=10,
+                                                transform=ccrs.UTM(zone=10)) # last
+            line, = self.geo_axes.plot(px[0],py[0],
+                                       color='.75',
+                                       transform=ccrs.UTM(zone=10))
+            time_text = self.geo_axes.text(0.5, 1.05, 'Hours Before: ' + str(0), fontsize=16, transform=self.geo_axes.transAxes,zorder=300)
+            
+            def update_geoaxes(num, front_marker, tail_marker, line, Q, time_text):
+                """
+                Animation function - updates the data of each plot at each
+                timestep and the hour textbox
+                """
+                Q.set_UVC(model.current_dataset['u_clean'].isel(time=num//4),model.current_dataset['v_clean'].isel(time=num//4))
+                front_marker.set_offsets((px[num],py[num]))
+                if num == 0:
+                    tail = 0
+                    line.set_data(px[num], py[num])
+                
+                elif num <= 24:
+                    tail = 0
+                    line.set_data(px[tail:num], py[tail: num])
+                else:
+                    tail = num - 24
+                    line.set_data(px[tail:num], py[tail: num])
+
+                tail_marker.set_offsets((px[tail], py[tail]))
+                time_text.set_text('Hours Before: ' + str(num//4))
+
+                return(front_marker, tail_marker, line, Q, time_text)
+            
+            anim = animation.FuncAnimation(self.fig,
+                                           update_geoaxes, fargs=(front_marker, tail_marker, line, Q, time_text),
+                                           interval=150,
+                                           blit=True,
+                                           frames=len(px))
+            Writer = animation.writers['ffmpeg']
+            writer = Writer(fps=15, metadata=dict(artist='Patrick Daniel'), bitrate=1800)
+            anim.save('testing_traj.mp4', dpi=200, writer=writer)
+            
+            
+        elif plot_type == 'all':
             for p in self.particles[:]:
                 self.geo_axes.plot(p.coordinates[:,0]+self.origin[0], p.coordinates[:,1]+self.origin[1],
                                    zorder=50,
@@ -171,14 +235,14 @@ class TrackingModel():
                                    marker='.',
                                    markersize=5,
                                    transform=ccrs.UTM(zone=10))
-
+        else:
+             raise ValueError("Plot type not valid.")
+        
     def advect_particle(self):
-        '''
+        """
         Advect a particle object based on the current
-        
-        
         Fixed timestep to 1/4 hour --> If this is to be worked update self.timestep
-        '''
+        """
         for p in self.particles:
             current_pos = p.get_position()
             if not np.any(np.isnan(current_pos)): # check if advection previously failed if so skip
@@ -188,7 +252,10 @@ class TrackingModel():
         self.update_time()
     
     def update_time(self):
-        ''' Update the time_index and number of elapsed hours with each advection '''
+        """
+        Update the time_index and number of elapsed hours with each advection
+        """
+        
         self.hours_elapsed += self.time_step
         self.time_index = int(self.hours_elapsed)
 
@@ -250,7 +317,6 @@ class TrackingModel():
         Returns
         ---------
         interp_value: interpolated value of f(y,x)
-
         """
 
         # Grid index shape
@@ -327,7 +393,7 @@ class TrackingModel():
         
 
 
-class Particle():
+class Particle(object):
 
     def __init__(self,coord):
         self.coordinates = np.array([coord])
@@ -343,6 +409,7 @@ class Particle():
 
 
 
+
 if __name__ == "__main__":
     model = TrackingModel()
     model.draw_map(draw_bathy=True)
@@ -354,9 +421,9 @@ if __name__ == "__main__":
     ix = np.where(np.isfinite(model.current_dataset['u_clean'].isel(time=0)))
     ixnan = np.where(np.isnan(model.current_dataset['u_clean'].isel(time=0)))
 #    ax.scatter(model.lon_grid[ix], model.lat_grid[ix], marker='.', s=10)
-#    ax.scatter(model.lon_grid[ixnan], model.lat_grid[ixnan], marker='x', s=10, c='r')
-#
-    for i in range(24*4*2):
+    ax.scatter(model.lon_grid[ixnan], model.lat_grid[ixnan], marker='x', s=10, c='r')
+#    
+    for i in range(24*4*3):
         try:
             model.advect_particle()
             
@@ -364,11 +431,5 @@ if __name__ == "__main__":
             print(e)
             print(round(i/4,2),'hours have passed before breaking')
             break
-    model.plot_particles(last=False)
+    model.plot_particles(plot_type='animation')
 
-
-    # MASK HACk
-#    mask = regionmask.defined_regions.natural_earth.land_110.mask(model.current_dataset, wrap_lon=False) # THis Mask is Onland (110 m resolution)
-#    u = t['u'].where(mask != 0)
-#    u  = u.isel(time=0)
-#    model.geo_axes.pcolormesh(model.lon_grid, model.lat_grid, u)

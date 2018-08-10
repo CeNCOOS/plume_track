@@ -3,7 +3,8 @@ import numpy as np
 
 
 def nan_helper(y):
-    """Helper to handle indices and logical indices of NaNs.
+    """
+    Helper to handle indices and logical indices of NaNs.
     Input:
         - y, 1d numpy array with possible NaNs
     Output:
@@ -20,8 +21,10 @@ def nan_helper(y):
 
 
 def interp_time_surface_currents(current_array_with_nans):
-    """ Linear interpolate gaps in timeseries at each grid point for the event. Skips gridpoints where over 90% of the
-        data are NANs (these are generally outside of the domain of HFR, but remain in the array to keep the grid rectangular)
+    """
+    Linear interpolate gaps in timeseries at each grid point for the event. Skips gridpoints where over 90% of the
+    data are NANs (these are generally outside of the domain of HFR, but remain in the array to keep the grid rectangular)
+    
     Input:
         - current_array_with_nans, 3d numpy array with possible NaNs, structure (time, latitude, longitude)
     Output:
@@ -29,6 +32,7 @@ def interp_time_surface_currents(current_array_with_nans):
           through linear interpolating at a single point through time.
     Example:
         >>> u_clean = interp_time_surface_currents(u)
+    
     """
     current_array = current_array_with_nans.copy()
     nan_location = ~np.isfinite(current_array)
