@@ -1,12 +1,10 @@
 # CeNCOOS San Francisco Plume Tracker #
 
+![particle animation](./traj_animiation.gif)
+
 Fluvian discharge from rain events can cause plumes of freshwater to discharge from the San Francisco Bay, often transporting pollutants like fecal coliform to the nearby beaches.
 
-Using a Lagrangian particle tracking model, based off of the [SCCOOS Tijuana River Plume Tracker](http://neocoweb.ucsd.edu/data/tracking/IB/), plume trajectories can be modeled from High Frequency Radar (HFR) derived surface current measurements. This tool will allow users to access the impact on various beaches following a plume discharge event.
-
-![alt latest river tijuana plume tracker](http://neocoweb.ucsd.edu/data/tracking/IB/tjrpts_ani_latest.gif)
-
-Latest iteration of the Tijuana River Plume tracker from SCCOOS.
+Using a Lagrangian particle tracking model, based off of the [SCCOOS Tijuana River Plume Tracker](http://www.sccoos.org/data/tracking/IB/), plume trajectories can be modeled from High Frequency Radar (HFR) derived surface current measurements. This tool will allow users to access the impact on various beaches following a plume discharge event.
 
 ### The Model ###
 
@@ -21,3 +19,7 @@ The time step can either be fixed or variable depending on the magnitude of the 
 The model is currently being ported into python, where it will continued to be developed, this code is found in the [python](./python/) directory.
 
 For reference, the original Matlab code can also be found in the [matlab](./matlab/) directory, although it may not be developed any further.
+
+### The Output ###
+
+![exampleImage](./2017527T050000_particle_trajectory.png)
