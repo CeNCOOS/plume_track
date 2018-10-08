@@ -9,12 +9,11 @@ from shapely.geometry import Polygon,Point
 import scipy.interpolate
 import xarray as xr
 import matplotlib.pyplot as plt
-import hfr_util
+import utilities.hfr_util
 import pyproj
 from matplotlib import animation, rc
 plt.rcParams['animation.html'] = 'jshtml'
 animation.rcParams['animation.embed_limit'] = 60
-#from lonlat2km import lonlat2km
 
 class TrackingModel(object):
 
