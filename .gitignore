@@ -1,3 +1,7 @@
+# Extra Local packages
+geostatsmodels-master/*
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
